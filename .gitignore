@@ -1,0 +1,11 @@
+*.pt
+*.csv
+*.zip
+**/__pycache__/
+**/.DS_Store
+**/.idea
+datasets
+*.log
+*.pt
+*.zip
+
