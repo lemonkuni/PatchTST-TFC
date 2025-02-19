@@ -40,6 +40,44 @@ class Config(object):
         self.TC = TC()                             # 时间对比学习配置
         self.augmentation = augmentations()        # 数据增强配置
 
+############################################################################################################
+         # 基础参数
+        self.enc_in = 1         # 输入特征维度
+        self.seq_len = 200        # 输入序列长度
+        self.pred_len = 24       # 预测序列长度
+        
+        # 模型结构参数
+        self.e_layers = 3        # encoder层数
+        self.n_heads = 8         # 注意力头数
+        self.d_model = 128       # 模型维度
+        self.d_ff = 256         # 前馈网络维度
+        self.dropout = 0.1       # dropout率
+        self.fc_dropout = 0.1    # 全连接层dropout率
+        self.head_dropout = 0.1  # 输出头dropout率
+        
+        # Patch相关参数 
+        self.patch_len = 16      # patch长度
+        self.stride = 8          # patch步长
+        self.padding_patch = 'end'  # patch填充方式
+        
+        # 数据处理参数
+        self.individual = False   # 是否独立处理每个特征
+        self.revin = True        # 是否使用RevIN
+        self.affine = True       # RevIN是否使用affine变换
+        self.subtract_last = False  # 是否减去最后一个值
+        
+        # 分解相关参数
+        self.decomposition = False  # 是否使用分解
+        self.kernel_size = 25      # 分解核大小
+
+     # 修改预测相关参数为分类参数
+        self.num_classes = 6     # 分类类别数
+        
+        
+        # 分类器特定参数
+        self.classifier_dropout = 0.1  # 分类器dropout率
+        self.use_weighted_loss = False # 是否使用加权损失（处理类别不平衡）
+
 class augmentations(object):
     def __init__(self):
         self.jitter_scale_ratio = 1.5  # 抖动缩放比例

@@ -1,3 +1,35 @@
+"""
+https://arxiv.org/abs/2005.13249
+这段代码的主要功能是将不同数据集转换为CLOCS模型所需的格式并保存。具体来说:
+
+1. 定义了8个数据集的相关信息:
+- alias_lst: 数据集别名
+- dirname_lst: 数据集目录名
+- trial_lst: 实验类型(contrastive_ms或contrastive_ss)
+- modality_lst: 数据模态(eeg/ecg/emg/other)
+
+2. 对每个数据集进行处理:
+- 加载train/val/test三个数据集的pt文件
+- 创建三个嵌套字典结构:
+  - input_dict: 存储输入数据
+  - output_dict: 存储标签
+  - pid_dict: 存储样本ID
+
+3. 数据处理:
+- 从pt文件中提取samples作为输入数据
+- 提取labels作为输出标签
+- 为每个样本生成唯一的ID
+
+4. 保存处理后的数据:
+- 将三个字典分别保存为pkl文件:
+  - frames_phases_{alias}.pkl: 输入数据
+  - labels_phases_{alias}.pkl: 标签
+  - pid_phases_{alias}.pkl: 样本ID
+- 保存路径为CLOCS模型的数据目录
+
+这样处理后的数据可以直接用于CLOCS模型的训练。
+"""
+
 import torch
 import numpy as np
 import os

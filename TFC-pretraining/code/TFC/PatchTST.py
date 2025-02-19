@@ -16,7 +16,7 @@ class Configs:
     def __init__(self):
         # 基础参数
         self.enc_in = 3         # 输入特征维度
-        self.seq_len = 50        # 输入序列长度
+        self.seq_len = 200        # 输入序列长度
         self.pred_len = 24       # 预测序列长度
         
         # 模型结构参数

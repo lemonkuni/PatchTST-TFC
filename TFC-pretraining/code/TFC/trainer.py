@@ -27,11 +27,11 @@ def Trainer(model,  model_optimizer, classifier, classifier_optimizer, train_dl,
             # Train and validate
             """Train. In fine-tuning, this part is also trained???"""
             train_loss = model_pretrain(model, model_optimizer, criterion, train_dl, config, device, training_mode)
-            logger.debug(f'\nPre-training Epoch : {epoch}', f'Train Loss : {train_loss:.4f}')
+            logger.debug(f'\nPre-training Epoch : {epoch}, Train Loss : {train_loss:.4f}')
 
         os.makedirs(os.path.join(experiment_log_dir, "saved_models"), exist_ok=True)
         chkpoint = {'model_state_dict': model.state_dict()}
-        torch.save(chkpoint, os.path.join(experiment_log_dir, "saved_models", f'ckp_last.pt'))
+        torch.save(chkpoint, os.path.join(experiment_log_dir, "saved_models", f'ckp_last.pt'))  ##保存预训练模型
         print('Pretrained model is stored at folder:{}'.format(experiment_log_dir+'saved_models'+'ckp_last.pt'))
 
     """Fine-tuning and Test"""
@@ -57,7 +57,7 @@ def Trainer(model,  model_optimizer, classifier, classifier_optimizer, train_dl,
             if len(total_f1) == 0 or F1 > max(total_f1):
                 print('update fine-tuned model')
                 os.makedirs('experiments_logs/finetunemodel/', exist_ok=True)
-                torch.save(model.state_dict(), 'experiments_logs/finetunemodel/' + arch + '_model.pt')
+                torch.save(model.state_dict(), 'experiments_logs/finetunemodel/' + arch + '_model.pt')  ##保存微调模型
                 torch.save(classifier.state_dict(), 'experiments_logs/finetunemodel/' + arch + '_classifier.pt')
             total_f1.append(F1)
 

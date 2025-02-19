@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 
-class NTXentLoss(torch.nn.Module):
+class NTXentLoss(torch.nn.Module): 
     def __init__(self, device, batch_size, temperature, use_cosine_similarity):
         super(NTXentLoss, self).__init__()
         self.batch_size = batch_size
