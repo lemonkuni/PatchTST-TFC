@@ -107,7 +107,7 @@ def train(train_loader, network, optimizer, epoch, loss_function, samples_per_cl
     samples_per_cls = samples_per_cls.to(device)
 
     # 在训练循环中添加每个类别的预测统计
-    num_classes = 5  # 修改这里                        ###########################################################################################################################################################################################################
+    num_classes = 6  # 修改这里                        ###########################################################################################################################################################################################################
     class_correct = torch.zeros(num_classes).to(device)
     class_total = torch.zeros(num_classes).to(device)
 
@@ -247,6 +247,8 @@ if __name__ == '__main__':
     parser.add_argument('--data_path', type=str, default='C:\\Users\\10025\\Desktop\\CMI-Net\\myTensor_Gyr_6.pt',
                         help='saved path of input data')
     args = parser.parse_args()
+
+    print("####################################",torch.cuda.is_available())
 
     device = torch.device("cuda:0" if args.gpu > 0 and torch.cuda.is_available() else "cpu")
 

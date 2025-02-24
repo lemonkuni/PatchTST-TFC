@@ -149,6 +149,8 @@ class PatchTSTNet(nn.Module):
         )
     
     def forward(self, x, return_probs=True):           # x: [Batch, Input length, Channel]
+        # 1. 去掉第二维的1，转换为 [batch_size, 50, 3]
+        x = x.squeeze(1)
         if self.decomposition:
             res_init, trend_init = self.decomp_module(x)
             res_init, trend_init = res_init.permute(0,2,1), trend_init.permute(0,2,1)  
@@ -180,48 +182,42 @@ def PatchTST():
 
 # 使用示例
 if __name__ == "__main__":
-
-    # configs = Configs()
-    # model = PatchTSTNet(configs)
-    
-    # # 测试模型
-    # batch_size = 32
-    # x = torch.randn(batch_size, configs.seq_len, configs.enc_in)  # [批次, 序列长度, 特征维度]
-    # output = model(x)
-    # print(output.shape)
-    
-
     configs = Configs()
     model = PatchTSTNet(configs)
     
     # 测试模型并打印每一步的形状
     batch_size = 32
-    x = torch.randn(batch_size, configs.seq_len, configs.enc_in)  # [批次, 序列长度, 特征维度]
-    print(f"输入数据形状: {x.shape}")  # 预期: [32, 200, 3]
+    # 创建新的输入形状 [batch_size, 1, 50, 3]
+    x = torch.randn(batch_size, 1, configs.seq_len, configs.enc_in)
+    print(f"原始输入形状: {x.shape}")  # 预期: [32, 1, 50, 3]
     
     # 测试数据流经模型的形状变化
     with torch.no_grad():
-        # 1. 首先转置为 [Batch, Channel, Length]
-        x_permuted = x.permute(0, 2, 1)
-        print(f"第一次转置后形状: {x_permuted.shape}")  # 预期: [32, 3, 200]
+        # 1. 去掉第二维的1，转换为 [batch_size, 50, 3]
+        x = x.squeeze(1)
+        print(f"去除维度1后形状: {x.shape}")  # 预期: [32, 50, 3]
         
-        # 2. 通过backbone
+        # 2. 转置为 [Batch, Channel, Length]
+        x_permuted = x.permute(0, 2, 1)
+        print(f"第一次转置后形状: {x_permuted.shape}")  # 预期: [32, 3, 50]
+        
+        # 3. 通过backbone
         if not model.decomposition:
             backbone_output = model.model(x_permuted)
-            print(f"Backbone输出形状: {backbone_output.shape}")  # 预期: [32, 3, d_model]
+            print(f"Backbone输出形状: {backbone_output.shape}")
             
-            # 3. 转置回 [Batch, Length, Channel]
+            # 4. 转置回 [Batch, Length, Channel]
             output_permuted = backbone_output.permute(0, 2, 1)
             print(f"第二次转置后形状: {output_permuted.shape}")
             
-            # 4. 重新排列为一维向量
-            flattened = output_permuted.reshape(output_permuted.size(0), -1)
-            print(f"展平后形状: {flattened.shape}")  # 预期: [32, 3*d_model]
+            # 5. 计算序列维度的平均值
+            x = output_permuted.mean(dim= -1)  # [Batch, Channel]
+            print(f"平均池化后形状: {x.shape}")
             
-            # 5. 最终分类输出
-            final_output = model.classifier(flattened)
-            print(f"最终输出形状: {final_output.shape}")  # 预期: [32, num_classes]
+            # 6. 最终分类输出
+            final_output = model.classifier(x)
+            print(f"分类器输出形状: {final_output.shape}")  # 预期: [32, num_classes]
             
-            # 6. 测试概率输出
+            # 7. 测试概率输出
             probs = F.softmax(final_output, dim=-1)
             print(f"概率输出形状: {probs.shape}")  # 预期: [32, num_classes]
