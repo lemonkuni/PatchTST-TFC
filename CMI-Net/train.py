@@ -34,7 +34,9 @@ from sklearn.metrics import f1_score, classification_report, confusion_matrix, c
     precision_score, roc_curve, auc
 from sklearn.preprocessing import label_binarize
 from itertools import cycle
-from models.PatchTST_wyh import PatchTSTNet  # 添加这行
+
+# # from models.PatchTST_wyh import PatchTSTNet  # 添加这行
+# from models.PatchTST import PatchTSTNet
 
 # 在文件开头，主函数之前添加全局变量
 global_vars = {
@@ -105,7 +107,7 @@ def train(train_loader, network, optimizer, epoch, loss_function, samples_per_cl
     samples_per_cls = samples_per_cls.to(device)
 
     # 在训练循环中添加每个类别的预测统计
-    num_classes = 6  # 修改这里
+    num_classes = 5  # 修改这里                        ###########################################################################################################################################################################################################
     class_correct = torch.zeros(num_classes).to(device)
     class_total = torch.zeros(num_classes).to(device)
 
@@ -232,7 +234,7 @@ def balance_dataset(X, y):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--net', type=str, default='PatchTST_wyh', help='net type')
+    parser.add_argument('--net', type=str, default='PatchTST', help='net type')
     parser.add_argument('--gpu', type=int, default=1, help='use gpu or not')  # 选择是否使用 GPU（1 表示使用 GPU，0 表示使用 CPU）。
     parser.add_argument('--b', type=int, default=256, help='batch size for dataloader')
     parser.add_argument('--lr', type=float, default=0.0001, help='initial learning rate')

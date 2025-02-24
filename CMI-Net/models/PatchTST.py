@@ -8,9 +8,11 @@ from torch import Tensor
 import torch.nn.functional as F
 import numpy as np
 
-from layers.PatchTST_backbone import PatchTST_backbone
-from layers.PatchTST_layers import series_decomp
+from models.layers.PatchTST_backbone import PatchTST_backbone
+from models.layers.PatchTST_layers import series_decomp
 
+# from layers.PatchTST_backbone import PatchTST_backbone
+# from layers.PatchTST_layers import series_decomp
 
 class Configs:
     def __init__(self):
@@ -140,10 +142,10 @@ class PatchTSTNet(nn.Module):
             # nn.Dropout(configs.classifier_dropout),
             # nn.Linear(configs.d_model*configs.enc_in, configs.num_classes)
 
-            nn.Linear(2304, 2304),
+            nn.Linear(768, 768),
             nn.ReLU(),
             nn.Dropout(configs.classifier_dropout),
-            nn.Linear(2304, configs.num_classes)
+            nn.Linear(768, configs.num_classes)
         )
     
     def forward(self, x, return_probs=True):           # x: [Batch, Input length, Channel]
@@ -163,7 +165,7 @@ class PatchTSTNet(nn.Module):
         # x = x.reshape(x.size(0), -1)# x: [Batch, Channel * Input length]
 
         x = x.mean(dim=-1) # [Batch, Input length]
-
+        # print("x.shape:",x.shape)
         logits = self.classifier(x)  # [Batch, num_classes]
         
         # 根据需要返回概率值或logits
@@ -188,7 +190,6 @@ if __name__ == "__main__":
     # output = model(x)
     # print(output.shape)
     
-    # ... existing code ...
 
     configs = Configs()
     model = PatchTSTNet(configs)

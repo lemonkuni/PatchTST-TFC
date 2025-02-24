@@ -56,20 +56,39 @@ def focal_loss(labels, logits, alpha, gamma):
 
 
 def CB_loss(labels, logits, samples_per_cls, no_of_classes, loss_type, beta, gamma):
-    """Compute the Class Balanced Loss between `logits` and the ground truth `labels`.
-    Class Balanced Loss: ((1-beta)/(1-beta^n))*Loss(labels, logits)
-    where Loss is one of the standard losses used for Neural Networks.
-    Args:
-      labels: A int tensor of size [batch].
-      logits: A float tensor of size [batch, no_of_classes].
-      samples_per_cls: A python list of size [no_of_classes].
-      no_of_classes: total number of classes. int
-      loss_type: string. One of "sigmoid", "focal", "softmax".
-      beta: float. Hyperparameter for Class balanced loss.
-      gamma: float. Hyperparameter for Focal loss.
-    Returns:
-      Loss tensor
+  
+  
+    """计算类别平衡损失(Class Balanced Loss)。
+    
+    该损失函数通过重新加权每个类别的损失来处理类别不平衡问题。权重基于每个类别的样本数量,使用公式:
+    Class Balanced Loss = ((1-beta)/(1-beta^n)) * Loss(labels, logits)
+    其中 n 是每个类别的样本数量。
+
+    使用方法:
+    >>> # 示例:
+    >>> labels = torch.tensor([0, 1, 2, 1])  # 批次中的类别标签
+    >>> logits = torch.randn(4, 3)  # 模型输出的预测分数,shape为[batch_size, num_classes] 
+    >>> samples_per_cls = [100, 50, 25]  # 每个类别的样本总数
+    >>> no_of_classes = 3  # 类别总数
+    >>> loss_type = "focal"  # 可选: "focal", "sigmoid", "softmax"
+    >>> beta = 0.9999  # 类别平衡的超参数,通常接近1
+    >>> gamma = 2.0  # Focal Loss的聚焦参数
+    >>> loss = CB_loss(labels, logits, samples_per_cls, no_of_classes, loss_type, beta, gamma)
+
+    参数:
+        labels (torch.Tensor): 形状为[batch]的整数张量,包含每个样本的类别标签。
+        logits (torch.Tensor): 形状为[batch, no_of_classes]的浮点张量,包含模型的原始输出分数。
+        samples_per_cls (list/torch.Tensor): 大小为[no_of_classes]的列表,包含每个类别的样本总数。
+        no_of_classes (int): 类别总数。
+        loss_type (str): 使用的基础损失函数类型,可选"sigmoid"、"focal"或"softmax"。
+        beta (float): 类别平衡的超参数,用于计算有效样本数,通常接近1。
+        gamma (float): Focal Loss的聚焦参数,仅在loss_type="focal"时使用。
+
+    返回:
+        torch.Tensor: 标量张量,表示计算得到的类别平衡损失值。
     """
+
+    
     device = logits.device
     labels = labels.to(device)
     

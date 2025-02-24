@@ -155,7 +155,7 @@ def main():
         print(f"唯一标签值: {torch.unique(train_labels).tolist()}")
         
         # 指定保存路径
-        save_path = os.path.join(current_dir, 'dataset.pt')
+        save_path = os.path.join(current_dir, 'cow6_wyh_dataset.pt')
         
         # Save datasets
         torch.save({

@@ -36,8 +36,8 @@ from config_files.SleepEEG_Configs_PatchTST import Config
 
 #     def forward(self, x_in_t, x_in_f):
 #         """Use Transformer"""
-#         x = self.transformer_encoder_t(x_in_t)
-#         h_time = x.reshape(x.shape[0], -1)
+#         x = self.transformer_encoder_t(x_in_t)  # 输入形状是 [batch_size, channel, seq_len]
+#         h_time = x.reshape(x.shape[0], -1)  # 将transformer编码器的输出张量重塑为二维张量 [batch_size, features=seq_len *channel]
 
 #         """Cross-space projector"""
 #         z_time = self.projector_t(h_time)
@@ -80,10 +80,12 @@ class TFC(nn.Module):
   
         
         """Time-based encoder"""
-        # 现在输入形状是 [batch_size, 1, seq_len]，符合PatchTST的要求
-        h_time = self.encoder_t.model(x_in_t)  # 不需要permute了
-        h_time = h_time.flatten(1)  # [batch_size, feature_dim]
-        
+        # 输入形状是 [batch_size, channel, seq_len]
+        h_time = self.encoder_t.model(x_in_t)  
+        #输出 h_time shape: torch.Size([128, 1, 178])
+        # print(f"000时间域特征 h_time shape: {h_time.shape}")  # 应该是 [128, 1,2816]
+        h_time = h_time.flatten(1)  # [batch_size, feature_dim]  等价于 h_time = h_time.reshape(h_time.shape[0], -1)
+        # print(f"001时间域特征 h_time shape: {h_time.shape}")  # 应该是 [128, 2816]
         """Cross-space projector"""
         z_time = self.projector_t(h_time)
         
@@ -97,7 +99,7 @@ class TFC(nn.Module):
         return h_time, z_time, h_freq, z_freq
     
 
-"""下游分类器"""
+"""下游分类器  测试用"""
 class target_classifier(nn.Module):
     def __init__(self, configs):
         super(target_classifier, self).__init__()
@@ -119,9 +121,10 @@ def test_model_shapes():
     
     # 创建模拟输入数据
     batch_size = configs.batch_size  # 128
+    channel = configs.channel  # 1
     # 输入形状应该是 [batch_size, channel, seq_len]
-    x_time = torch.randn(batch_size, 1, configs.TSlength_aligned)  # [128, 1, 178]
-    x_freq = torch.randn(batch_size, 1, configs.TSlength_aligned)  # [128, 1, 178]
+    x_time = torch.randn(batch_size, channel, configs.TSlength_aligned)  # [128, 1, 178]
+    x_freq = torch.randn(batch_size, channel, configs.TSlength_aligned)  # [128, 1, 178]
     
     print("=== 输入数据形状 ===")
     print(f"批次大小: {batch_size}")

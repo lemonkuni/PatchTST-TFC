@@ -22,6 +22,9 @@ def get_network(args):
     elif args.net == 'PatchTST_wyh':
         from models.PatchTST_wyh import PatchTST_wyh
         net = PatchTST_wyh()
+    elif args.net == 'PatchTST':
+        from models.PatchTST import PatchTST
+        net = PatchTST()
     elif args.net == 'vgg13':
         from models.vgg import vgg13_bn
         net = vgg13_bn()
