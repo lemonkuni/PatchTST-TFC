@@ -46,7 +46,7 @@ class Configs:
         self.kernel_size = 25      # 分解核大小
 
      # 修改预测相关参数为分类参数
-        self.num_classes = 6     # 分类类别数
+        self.num_classes = 5     # 分类类别数
         
         
         # 分类器特定参数

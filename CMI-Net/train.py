@@ -107,7 +107,7 @@ def train(train_loader, network, optimizer, epoch, loss_function, samples_per_cl
     samples_per_cls = samples_per_cls.to(device)
 
     # 在训练循环中添加每个类别的预测统计
-    num_classes = 6  # 修改这里                        ###########################################################################################################################################################################################################
+    num_classes = 5 # 修改这里                        ###########################################################################################################################################################################################################
     class_correct = torch.zeros(num_classes).to(device)
     class_total = torch.zeros(num_classes).to(device)
 
@@ -248,7 +248,7 @@ if __name__ == '__main__':
                         help='saved path of input data')
     args = parser.parse_args()
 
-    print("####################################",torch.cuda.is_available())
+    # print("####################################",torch.cuda.is_available())
 
     device = torch.device("cuda:0" if args.gpu > 0 and torch.cuda.is_available() else "cpu")
 
@@ -258,7 +258,8 @@ if __name__ == '__main__':
         torch.manual_seed(args.seed)  # 设置 CPU 上的随机数种子，确保在 CPU 上执行的所有与随机性相关的操作都是可重复的
 
     # 在创建模型之前先定义类别数
-    Class_labels = ['eating', 'galloping', 'standing', 'trotting', 'walking-natural', 'walking-rider']
+    # Class_labels = ['eating', 'galloping', 'standing', 'trotting', 'walking-natural', 'walking-rider'] ## 原始论文 马的
+    Class_labels = ['standing', 'running', 'grazing', 'eating', 'trotting', 'walking']
     num_classes = len(Class_labels)  # 定义类别数
     print(f"Initializing model with {num_classes} classes")
 
@@ -270,23 +271,23 @@ if __name__ == '__main__':
     print(net)
     
     # 检查最后一层的输出维度
-    last_layer = None
-    for name, module in net.named_modules():
-        if isinstance(module, nn.Linear):
-            last_layer = module
-    if last_layer is not None:
-        print(f"Last layer output dimension: {last_layer.out_features}")
-        if last_layer.out_features != num_classes:
-            # 动态修改输出层
-            if isinstance(net, PatchTSTNet):
-                in_features = last_layer.in_features
-                net.classifier = nn.Linear(in_features, num_classes).to(device)
-                print(f"Modified classifier output dimension to {num_classes}")
-            else:
-                raise ValueError(
-                    f"Model's output dimension ({last_layer.out_features}) "
-                    f"does not match number of classes ({num_classes})"
-                )
+    # last_layer = None
+    # for name, module in net.named_modules():
+    #     if isinstance(module, nn.Linear):
+    #         last_layer = module
+    # if last_layer is not None:
+    #     print(f"Last layer output dimension: {last_layer.out_features}")
+    #     if last_layer.out_features != num_classes:
+    #         # 动态修改输出层
+    #         if isinstance(net, PatchTSTNet):
+    #             in_features = last_layer.in_features
+    #             net.classifier = nn.Linear(in_features, num_classes).to(device)
+    #             print(f"Modified classifier output dimension to {num_classes}")
+    #         else:
+    #             raise ValueError(
+    #                 f"Model's output dimension ({last_layer.out_features}) "
+    #                 f"does not match number of classes ({num_classes})"
+    #             )
 
     print(f"Model is on device: {next(net.parameters()).device}")
 

@@ -92,4 +92,3 @@ tensor_label_test = torch.from_numpy(np.array(labels_test)).type(torch.LongTenso
 
 # 4. 保存处理后的数据
 torch.save([tensor_samples_train, tensor_samples_valid, tensor_samples_test, tensor_label_train, tensor_label_valid, tensor_label_test], "E:\\program\\aaa_DL_project\\0000PatchTST-TFC\\CMI-Net\\data\\25Hz_data.pt")
-
