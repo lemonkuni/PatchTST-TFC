@@ -261,6 +261,7 @@ if __name__ == '__main__':
     # 在创建模型之前先定义类别数
     # Class_labels = ['eating', 'galloping', 'standing', 'trotting', 'walking-natural', 'walking-rider'] ## 原始论文 马的
     Class_labels = ['standing', 'running', 'grazing', 'eating', 'trotting', 'walking']
+    
     num_classes = len(Class_labels)  # 定义类别数
     print(f"Initializing model with {num_classes} classes")
 

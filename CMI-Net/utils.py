@@ -174,17 +174,43 @@ def get_network(args):
 
 def get_mydataloader(pathway, data_id = 1, batch_size=16, num_workers=2, shuffle=True):
     Mydataset = My_Dataset(pathway, data_id, transform=None)
-    Data_loader = DataLoader(Mydataset, shuffle=shuffle, num_workers=num_workers, batch_size=batch_size)
+    Data_loader = DataLoader(Mydataset, shuffle=shuffle, num_workers=num_workers, batch_size=batch_size) # DataLoader 是 PyTorch 提供的一个数据加载器，用于将数据集中的数据转换为可用于训练的批次。
     
     return Data_loader
 
 
 def get_weighted_mydataloader(pathway, data_id = 1, batch_size=16, num_workers=2, shuffle=True):
+    """
+    获取带权重的数据加载器，用于处理不平衡数据集。
+    
+    参数:
+        pathway (str): 数据集文件路径
+        data_id (int): 数据集标识符(0:训练集, 1:验证集, 2:测试集)
+        batch_size (int): 每个批次的样本数
+        num_workers (int): 数据加载的线程数
+        shuffle (bool): 是否打乱数据
+        
+    返回:
+        Data_loader: 数据加载器对象
+        weight: 每个类别的权重(经过softmax归一化)
+        number: 每个类别的样本数量
+        
+    功能:
+    1. 创建数据集对象
+    2. 统计每个类别的样本数量
+    3. 计算每个类别的权重(样本数的倒数)
+    4. 对权重进行softmax归一化
+    5. 创建并返回DataLoader以及相关统计信息
+    
+    主要用于处理类别不平衡问题,可以用返回的权重来调整损失函数
+    """
     Mydataset = My_Dataset(pathway, data_id, transform=None)
     all_labels = [label for data, label in Mydataset] 
-    number = np.unique(all_labels, return_counts = True)[1] # 使用 np.unique 计算每个标签的样本数量，并生成权重。权重是每个标签样本数的倒数。
-    weight = 1./ torch.from_numpy(number).float()
-    # print(weight)
-    weight = torch.softmax(weight,dim=0) # 对上述  权重应用 softmax 操作，使得所有权重的和为 1，这样可以更好地进行权重调整。
+    number = np.unique(all_labels, return_counts = True)[1] # 统计每个类别的样本数量
+    weight = 1./ torch.from_numpy(number).float() # 计算权重为样本数的倒数
+    weight = torch.softmax(weight,dim=0) # 使用softmax归一化权重
     Data_loader = DataLoader(Mydataset, shuffle=shuffle, num_workers=num_workers, batch_size=batch_size)
     return Data_loader, weight, number
+
+
+

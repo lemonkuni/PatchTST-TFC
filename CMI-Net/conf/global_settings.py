@@ -6,6 +6,7 @@ author axiumao
 from datetime import datetime
 
 #directory to save weights file
+# 保存模型权重文件的目录
 CHECKPOINT_PATH = 'checkpoint'
 
 #total training epoches

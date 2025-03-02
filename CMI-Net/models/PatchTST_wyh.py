@@ -57,7 +57,7 @@ class PatchTSTEncoderLayer(nn.Module):
 
 
 class PatchTSTNet(nn.Module):
-    def __init__(self, num_classes=6, patch_size=16, d_model=128, n_heads=8,
+    def __init__(self, num_classes=5, patch_size=16, d_model=128, n_heads=8,
                  n_layers=3, d_ff=256, dropout=0.1, activation='gelu'):
         super().__init__()
 

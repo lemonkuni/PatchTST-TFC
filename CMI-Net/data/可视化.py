@@ -22,3 +22,6 @@ print(unique_labels)
 for label in unique_labels:
     count = (labels == label).sum().item()
     print(f"标签 {label.item()} 的数量: {count}")
+
+for i in range(10):
+    print(tensors[0][i+10000],tensors[3][i+10000]);

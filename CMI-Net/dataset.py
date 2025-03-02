@@ -26,7 +26,7 @@ class My_Dataset(Dataset):
 
     def __getitem__(self, index): # 重载 []
         label = self.labels[index]  #torch.size: [1]         ? 这个labels不是one-hot 编码吗？
-        image = self.data[index] #troch.size: [1,200,6]       六个通道， acc_x，acc_y,acc_z,gyr_x,gyr_y,gyr_z
+        image = self.data[index] #troch.size: [1,50,3]       六个通道， acc_x，acc_y,acc_z,gyr_x,gyr_y,gyr_z
         
         if self.transform:
             image = self.transform(image)
