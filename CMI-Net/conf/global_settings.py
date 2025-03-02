@@ -11,7 +11,7 @@ CHECKPOINT_PATH = 'checkpoint'
 
 #total training epoches
 EPOCH = 200
-MILESTONES = [0, 60, 80]
+MILESTONES = [0, 60, 80] # 学习率调整的里程碑
 
 #initial learning rate
 #INIT_LR = 0.1

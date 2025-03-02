@@ -32,77 +32,51 @@ from sklearn.metrics import f1_score, classification_report, confusion_matrix, c
 
 
 def train(train_loader, network, optimizer, epoch, loss_function, samples_per_cls):
-    """
-    训练函数，用于训练神经网络模型
-    参数:
-        train_loader: 训练数据加载器
-        network: 神经网络模型
-        optimizer: 优化器
-        epoch: 当前训练轮次
-        loss_function: 损失函数
-        samples_per_cls: 每个类别的样本数量
-    """
-    # 记录开始时间
+
     start = time.time()
-    # 将网络设置为训练模式
     network.train()
-    # 初始化列表用于存储训练过程中的准确率和损失值
     train_acc_process = []
     train_loss_process = []
-
-    # 遍历训练数据批次
     for batch_index, (images, labels) in enumerate(train_loader):
-        # 将图像和标签数据移动到指定设备(GPU/CPU)
-        images, labels = images.to(device), labels.to(device)
 
-        # 清除之前的梯度
-        optimizer.zero_grad()
-        # 前向传播，获取模型输出
-        outputs = network(images)
-
-        # 确保samples_per_cls是张量并移动到正确的设备
-        if isinstance(samples_per_cls, torch.Tensor):
-            samples_per_cls = samples_per_cls.to(device)
-
-        # 设置损失类型为focal loss
-        loss_type = "focal"
-        # 计算类别平衡损失(Class Balanced Loss)
-        loss_cb = CB_loss(labels, outputs, samples_per_cls, 5, loss_type, args.beta, args.gamma)
-
-        # 计算交叉熵损失
-        loss_ce = loss_function(outputs, labels)
-        # 组合损失(这里CB loss的权重为0，实际上只使用了CE loss)
-        # loss = 1.0 * loss_ce + 0.0 * loss_cb
-        loss = 0.0*loss_ce + 1.0*loss_cb # class-balanced focal loss (CMI-Net+CB focal loss)
+        if args.gpu:
+            labels = labels.cuda()
+            images = images.cuda()
+            #loss_function = loss_function.cuda()
+        # print("label",labels)
         
-        # 如果启用权重衰减，添加正则化损失
+        optimizer.zero_grad() # clear gradients for this training step
+        outputs = network(images)
+        loss_type = "focal"
+        loss_cb = CB_loss(labels, outputs, samples_per_cls, 5,loss_type, args.beta, args.gamma) ### 这里类别数为5################################
+        
+        loss_ce = loss_function(outputs, labels)
+        loss = 1.0*loss_ce + 0.0*loss_cb  #cross-entropy loss (CMI-Net)
+        #loss = 0.0*loss_ce + 1.0*loss_cb # class-balanced focal loss (CMI-Net+CB focal loss)
         if args.weight_d > 0:
-            loss += reg_loss(network)
-
-        # 反向传播计算梯度
-        loss.backward()
-        # 更新模型参数
-        optimizer.step()
-
-        # 计算预测准确率
-        _, preds = outputs.max(1)  # 获取最大概率的类别
-        correct_n = preds.eq(labels).sum()  # 计算正确预测的数量
-        accuracy_iter = correct_n.float() / len(labels)  # 计算准确率
-
-        # 将准确率和损失值存储到CPU中
-        train_acc_process.append(accuracy_iter.cpu().numpy().tolist())
+            loss = loss + reg_loss(net)
+        
+        loss.backward() # backpropogation, compute gradients
+        optimizer.step() # apply gradients
+        _, preds = outputs.max(1)
+        # print("prediction",preds)
+        correct_n = preds.eq(labels).sum()
+        accuracy_iter = correct_n.float() / len(labels)
+        
+        if args.gpu:
+            accuracy_iter = accuracy_iter.cpu()
+        
+        train_acc_process.append(accuracy_iter.numpy().tolist())
         train_loss_process.append(loss.item())
 
-    # 打印训练信息
     print('Training Epoch: {epoch} [{total_samples}]\tTrain_accuracy: {:.4f}\tLoss: {:0.4f}\tLR: {:0.6f}'.format(
-            np.mean(train_acc_process),  # 平均准确率
-            np.mean(train_loss_process),  # 平均损失
-            optimizer.param_groups[0]['lr'],  # 当前学习率
+            np.mean(train_acc_process),
+            np.mean(train_loss_process),
+            optimizer.param_groups[0]['lr'],
             epoch=epoch,
-            total_samples=len(train_loader.dataset)  # 总样本数
+            total_samples=len(train_loader.dataset)
     ))
-
-    # 计算并存储每个 epoch 的平均准确率 
+    
     Train_Accuracy.append(np.mean(train_acc_process))
     Train_Loss.append(np.mean(train_loss_process))
     finish = time.time()
@@ -111,73 +85,65 @@ def train(train_loader, network, optimizer, epoch, loss_function, samples_per_cl
     return network
 
 
+@torch.no_grad()
+def eval_training(valid_loader, network,loss_function, epoch=0):
 
-@torch.no_grad()  # 装饰器，评估时不需要更新梯度
-def eval_training(valid_loader, network, loss_function, epoch=0):
-    start = time.time()  # 记录开始时间
-    network.eval()  # 将网络设置为评估模式，关闭dropout等训练特有的层
-
-    n = 0  # 批次计数器
-    valid_loss = 0.0  # 累计验证损失
-    correct = 0.0  # 累计正确预测数
-    class_target = []  # 存储真实标签
-    class_predict = []  # 存储预测标签
-    loss_function = loss_function.cuda()
-
-    # 在 GPU 上收集所有数据，减少频繁的 GPU 到 CPU 转换
-    for (images, labels) in valid_loader:  # 遍历验证数据集
-        # images, labels = images.to(device), labels.to(device)  # 将数据移动到指定设备(GPU/CPU)  cuda:0
-
-        images = images.cuda()
-        labels = labels.cuda()
-            
-
-        outputs = network(images)  # 前向传播得到模型输出 [batch_size, 概率值]
-        loss = loss_function(outputs, labels)  # 计算损失值
-
-        valid_loss += loss.item()  # 累加损失值
-        _, preds = outputs.max(1)  # 获取最大概率对应的类别作为预测结果
-        correct += preds.eq(labels).sum()  # 计算预测正确的样本数
-
-        # print(f"预测preds: {preds},预测长度,{len(preds)}, 真实labels: {labels},真实长度,{len(labels)}")  batch_size 256
-        
-        # 收集 GPU 上的张量
-        class_target.append(labels)  # 收集真实标签
-        class_predict.append(preds)  # 收集预测标签
-
-        n += 1  # 批次计数加1
-
-    # 在所有数据收集完之后再进行转换到 CPU
-    class_target = torch.cat(class_target).cpu().numpy().tolist()  # 将所有真实标签合并并转换为列表
-    class_predict = torch.cat(class_predict).cpu().numpy().tolist()  # 将所有预测标签合并并转换为列表
-
-    # 打印分类报告
-    report = classification_report(class_target, class_predict, zero_division='warn')  # 生成分类报告
-    print('Evaluating Network.....')
-    print('Valid set: Epoch: {}, Average loss: {:.4f}, Accuracy: {:.4f}, Time consumed: {:.2f}s'.format(
-        epoch,
-        valid_loss / n,  # 计算平均损失
-        correct.float() / len(valid_loader.dataset),  # 计算准确率
-        time.time() - start  # 计算耗时
-    ))
-
+    start = time.time()
+    network.eval()
     
+    n = 0
+    valid_loss = 0.0 # cost function error
+    correct = 0.0
+    class_target =[]
+    class_predict = []
 
-    print('------------')
-    print('Classification Report:')
-    print(report)
+    for (images, labels) in valid_loader:
+        if args.gpu:
+            images = images.cuda()
+            labels = labels.cuda()
+            loss_function = loss_function.cuda()
 
+        outputs = network(images)
+        loss = loss_function(outputs, labels)
+
+        valid_loss += loss.item()
+        _, preds = outputs.max(1)
+        correct += preds.eq(labels).sum()
+        
+        if args.gpu:
+            labels = labels.cpu()
+            preds = preds.cpu()
+        
+        class_target.extend(labels.numpy().tolist())
+        class_predict.extend(preds.numpy().tolist())
+        
+        n +=1
+    finish = time.time()
+    
+    print('Evaluating Network.....')
+    print('Valid set: Epoch: {}, Average loss: {:.4f}, Accuracy: {:.4f}, Time consumed:{:.2f}s'.format(
+        epoch,
+        valid_loss / n, #总的平均loss
+        correct.float() / len(valid_loader.dataset),
+        finish - start
+    ))
+    
     #Obtain f1_score of the prediction
     fs = f1_score(class_target, class_predict, average='macro')
     print('f1 score = {}'.format(fs))
+    
+    #Output the classification report
+    print('------------')
+    print('Classification Report')
+    print(classification_report(class_target, class_predict))
+    
     f1_s.append(fs)
     Valid_Loss.append(valid_loss / n)
     Valid_Accuracy.append(correct.float() / len(valid_loader.dataset))
     
+    print('Setting: Epoch: {}, Batch size: {}, Learning rate: {:.6f}, gpu:{}, seed:{}'.format(args.epoch, args.b, args.lr, args.gpu, args.seed))
 
-    # 返回准确率、平均损失和宏平均F1分数
-    return correct.float() / len(valid_loader.dataset), valid_loss / len(valid_loader.dataset), f1_score(class_target, class_predict, average='macro')
-
+    return correct.float() / len(valid_loader.dataset), valid_loss / len(valid_loader.dataset), fs
         
 
 def get_parameter_number(net):
@@ -188,66 +154,63 @@ def get_parameter_number(net):
 if __name__ == '__main__':
     
     parser = argparse.ArgumentParser()
-    parser.add_argument('--net', type=str, default='PatchTST', help='net type')
-    parser.add_argument('--gpu', type = int, default=1, help='use gpu or not')  # 选择是否使用 GPU（1 表示使用 GPU，0 表示使用 CPU）。
+    parser.add_argument('--net', type=str, default='canet', help='net type')
+    parser.add_argument('--gpu', type = int, default=0, help='use gpu or not')
     parser.add_argument('--b', type=int, default=256, help='batch size for dataloader')
     parser.add_argument('--lr', type=float, default=0.0001, help='initial learning rate')
     parser.add_argument('--epoch',type=int, default=100, help='total training epoches')
     parser.add_argument('--seed',type=int, default=10, help='seed')
     parser.add_argument('--gamma',type=float, default=0, help='the gamma of focal loss')
     parser.add_argument('--beta',type=float, default=0.9999, help='the beta of class balanced loss')
-    parser.add_argument('--weight_d',type=float, default=0.1, help='weight decay for regularization')  # 权重衰减 系数 
-    parser.add_argument('--save_path',type=str, default='setting0', help='saved path of each setting') #
-    parser.add_argument('--data_path',type=str, default='E:\program\aaa_DL_project\0000PatchTST-TFC\CMI-Net\data\new_goat_25hz_3axis.pt', help='saved path of input data')
+    parser.add_argument('--weight_d',type=float, default=0.1, help='weight decay for regularization')
+    parser.add_argument('--save_path',type=str, default='setting0', help='saved path of each setting')
+    parser.add_argument('--data_path',type=str, default='C:\\Workplace\\Data\\myTensor_1.pt', help='saved path of input data')
     args = parser.parse_args()
 
-    device = torch.device("cuda:0" if args.gpu > 0 and torch.cuda.is_available() else "cpu") # 条件运算符，如果 args.gpu > 0 并且 torch.cuda.is_available() 为 True，则使用 GPU，否则使用 CPU
-
     if args.gpu:
-        torch.cuda.manual_seed(args.seed)# 设置 GPU 上的随机数种子，确保在 GPU 上的随机操作（如权重初始化等）也是可重复的
+        torch.cuda.manual_seed(args.seed)
     else:
-        torch.manual_seed(args.seed)#  设置 CPU 上的随机数种子，确保在 CPU 上执行的所有与随机性相关的操作都是可重复的
+        torch.manual_seed(args.seed)
     
-    net = get_network(args).to(device)   # get_network 在 utils.py  中 ，把模型搬运到device(GPU)中
-    # print(net)
-    print(f"Model is on device: {next(net.parameters()).device}")
-    # print(f"Model is on device: {net.parameters().device}")
+    net = get_network(args)
+    print(net)
+    
     print('Setting: Epoch: {}, Batch size: {}, Learning rate: {:.6f}, gpu:{}, seed:{}'.format(args.epoch, args.b, args.lr, args.gpu, args.seed))
 
     sysstr = platform.system()
     if(sysstr =="Windows"):
         num_workers = 0
     else:
-        num_workers = 8                        # 在windows上的进程是0， 在Linux的是8？ 在Windows 在多进程的数据加载时可能会遇到问题？？？？
+        num_workers = 8
         
-    pathway = args.data_path                     # 默认Linux的问题
+    pathway = args.data_path
     if sysstr=='Linux': 
         pathway = args.data_path
     
-    train_loader, weight_train, number_train = get_weighted_mydataloader(pathway, data_id=0, batch_size=args.b, num_workers=num_workers, shuffle=True) # weight_train 是每个类别的权重 ，number_train 是每个类别的样本数量
+    train_loader, weight_train, number_train = get_weighted_mydataloader(pathway, data_id=0, batch_size=args.b, num_workers=num_workers, shuffle=True)
     valid_loader = get_mydataloader(pathway, data_id=1, batch_size=args.b, num_workers=num_workers, shuffle=True)
     test_loader = get_mydataloader(pathway, data_id=2, batch_size=args.b, num_workers=num_workers, shuffle=True)
     
     if args.weight_d > 0:
-        reg_loss=Regularization(net, args.weight_d, p=2) # 正则化损失函数
+        reg_loss=Regularization(net, args.weight_d, p=2)
     else:
         print("no regularization")
     
     # loss_function = nn.CrossEntropyLoss(weight=weight_train)
-    loss_function_CE = nn.CrossEntropyLoss() # 交叉熵损失函数
-    optimizer = optim.Adam(net.parameters(), lr=args.lr) # 使用 Adam 优化器来训练模型，并指定学习率 args.lr
-    train_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)    #  创建一个学习率调度器 StepLR，每 20 个 epoch 调整学习率，缩小比例 gamma=0.1
+    loss_function_CE = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(net.parameters(), lr=args.lr)
+    train_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
 
+    checkpoint_path = os.path.join(settings.CHECKPOINT_PATH, args.net, args.save_path, settings.TIME_NOW)
 
-    checkpoint_path = os.path.join(settings.CHECKPOINT_PATH, args.net, args.save_path, settings.TIME_NOW) #它会根据操作系统的路径分隔符（例如，Windows 上是反斜杠 \，而在 Unix/Linux 上是正斜杠 /）来正确地构建路径。
     #use tensorboard
-    if not os.path.exists(settings.LOG_DIR):               # 如果没 log 路径 创建log路径 runs 路径
-        os.mkdir(settings.LOG_DIR)                       
+    if not os.path.exists(settings.LOG_DIR):
+        os.mkdir(settings.LOG_DIR)
+
     #create checkpoint folder to save model
-    if not os.path.exists(checkpoint_path):                  # 参数路径
+    if not os.path.exists(checkpoint_path):
         os.makedirs(checkpoint_path)
     checkpoint_path_pth = os.path.join(checkpoint_path, '{net}-{type}.pth')
-
 
     best_acc = 0.0
     Train_Loss = []
@@ -257,13 +220,12 @@ if __name__ == '__main__':
     f1_s = []
     best_epoch = 1
     best_weights_path = checkpoint_path_pth.format(net=args.net, type='best')
-   
-   
     # validation_loss = 0
     for epoch in range(1, args.epoch + 1):
+        train_scheduler.step(epoch)
+            
         net = train(train_loader, net, optimizer, epoch, loss_function=loss_function_CE, samples_per_cls=number_train)
         acc, validation_loss, fs_valid = eval_training(valid_loader, net, loss_function_CE, epoch)
-        train_scheduler.step()  # 去掉 epoch 参数，并放到最后调用
 
         #start to save best performance model (according to the accuracy on validation dataset) after learning rate decay to 0.01
         if epoch > settings.MILESTONES[0] and best_acc < acc:
@@ -271,8 +233,7 @@ if __name__ == '__main__':
             best_epoch = epoch
             torch.save(net.state_dict(), best_weights_path)
     print('best epoch is {}'.format(best_epoch))
-
-
+            
     #plot accuracy varying over time
     font_1 = {'weight' : 'normal', 'size'   : 20}
     fig1=plt.figure(figsize=(12,9))
@@ -339,7 +300,7 @@ if __name__ == '__main__':
     print('Validation accuracy: {}'.format(Valid_Accuracy), file=f)
     print('Validation F1-score: {}'.format(f1_s), file=f)
     
-    ######load the best trained model and test testing data  ，测试函数，推理
+    ######load the best trained model and test testing data
     best_net = get_network(args)
     best_net.load_state_dict(torch.load(best_weights_path))
     
