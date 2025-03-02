@@ -20,7 +20,7 @@ DATE_FORMAT = '%A_%d_%B_%Y_%Hh_%Mm_%Ss'
 #time of we run the script
 TIME_NOW = datetime.now().strftime(DATE_FORMAT)
 
-#tensorboard log dir
+#tensorboard log dir 保存训练日志的目录
 LOG_DIR = 'runs'
 
 #save weights file per SAVE_EPOCH epoch

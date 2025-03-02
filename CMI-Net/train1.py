@@ -32,49 +32,74 @@ from sklearn.metrics import f1_score, classification_report, confusion_matrix, c
 
 
 def train(train_loader, network, optimizer, epoch, loss_function, samples_per_cls):
+    """
+    训练函数，用于训练神经网络模型
+    参数:
+        train_loader: 训练数据加载器
+        network: 神经网络模型
+        optimizer: 优化器
+        epoch: 当前训练轮次
+        loss_function: 损失函数
+        samples_per_cls: 每个类别的样本数量
+    """
+    # 记录开始时间
     start = time.time()
+    # 将网络设置为训练模式
     network.train()
+    # 初始化列表用于存储训练过程中的准确率和损失值
     train_acc_process = []
     train_loss_process = []
 
+    # 遍历训练数据批次
     for batch_index, (images, labels) in enumerate(train_loader):
-        # Move images and labels to the correct device
+        # 将图像和标签数据移动到指定设备(GPU/CPU)
         images, labels = images.to(device), labels.to(device)
 
-        optimizer.zero_grad()  # Clear gradients for this training step
-        outputs = network(images)  # Outputs will be on the same device as the model
+        # 清除之前的梯度
+        optimizer.zero_grad()
+        # 前向传播，获取模型输出
+        outputs = network(images)
 
-        # Ensure samples_per_cls is a tensor and move it to the same device
+        # 确保samples_per_cls是张量并移动到正确的设备
         if isinstance(samples_per_cls, torch.Tensor):
             samples_per_cls = samples_per_cls.to(device)
 
+        # 设置损失类型为focal loss
         loss_type = "focal"
-        loss_cb = CB_loss(labels, outputs, samples_per_cls, 5, loss_type, args.beta, args.gamma)  ################################ 6 是种类数
+        # 计算类别平衡损失(Class Balanced Loss)
+        loss_cb = CB_loss(labels, outputs, samples_per_cls, 5, loss_type, args.beta, args.gamma)
 
+        # 计算交叉熵损失
         loss_ce = loss_function(outputs, labels)
-        loss = 1.0 * loss_ce + 0.0 * loss_cb
-
+        # 组合损失(这里CB loss的权重为0，实际上只使用了CE loss)
+        # loss = 1.0 * loss_ce + 0.0 * loss_cb
+        loss = 0.0*loss_ce + 1.0*loss_cb # class-balanced focal loss (CMI-Net+CB focal loss)
+        
+        # 如果启用权重衰减，添加正则化损失
         if args.weight_d > 0:
             loss += reg_loss(network)
 
-        loss.backward()  # Backpropagation
-        optimizer.step()  # Apply gradients
+        # 反向传播计算梯度
+        loss.backward()
+        # 更新模型参数
+        optimizer.step()
 
-        _, preds = outputs.max(1)
-        correct_n = preds.eq(labels).sum()
-        accuracy_iter = correct_n.float() / len(labels)
+        # 计算预测准确率
+        _, preds = outputs.max(1)  # 获取最大概率的类别
+        correct_n = preds.eq(labels).sum()  # 计算正确预测的数量
+        accuracy_iter = correct_n.float() / len(labels)  # 计算准确率
 
-        # Move accuracy_iter to CPU for storing
+        # 将准确率和损失值存储到CPU中
         train_acc_process.append(accuracy_iter.cpu().numpy().tolist())
         train_loss_process.append(loss.item())
 
-    # 打印信息时不用设备移动
+    # 打印训练信息
     print('Training Epoch: {epoch} [{total_samples}]\tTrain_accuracy: {:.4f}\tLoss: {:0.4f}\tLR: {:0.6f}'.format(
-            np.mean(train_acc_process),
-            np.mean(train_loss_process),
-            optimizer.param_groups[0]['lr'],
+            np.mean(train_acc_process),  # 平均准确率
+            np.mean(train_loss_process),  # 平均损失
+            optimizer.param_groups[0]['lr'],  # 当前学习率
             epoch=epoch,
-            total_samples=len(train_loader.dataset)
+            total_samples=len(train_loader.dataset)  # 总样本数
     ))
 
     return network
@@ -94,7 +119,7 @@ def eval_training(valid_loader, network, loss_function, epoch=0):
 
     # 在 GPU 上收集所有数据，减少频繁的 GPU 到 CPU 转换
     for (images, labels) in valid_loader:
-        images, labels = images.to(device), labels.to(device)
+        images, labels = images.to(device), labels.to(device) #device 是 cuda： 0
 
         outputs = network(images)
         loss = loss_function(outputs, labels)
@@ -173,12 +198,12 @@ if __name__ == '__main__':
     if sysstr=='Linux': 
         pathway = args.data_path
     
-    train_loader, weight_train, number_train = get_weighted_mydataloader(pathway, data_id=0, batch_size=args.b, num_workers=num_workers, shuffle=True)
+    train_loader, weight_train, number_train = get_weighted_mydataloader(pathway, data_id=0, batch_size=args.b, num_workers=num_workers, shuffle=True) # weight_train 是每个类别的权重 ，number_train 是每个类别的样本数量
     valid_loader = get_mydataloader(pathway, data_id=1, batch_size=args.b, num_workers=num_workers, shuffle=True)
     test_loader = get_mydataloader(pathway, data_id=2, batch_size=args.b, num_workers=num_workers, shuffle=True)
     
     if args.weight_d > 0:
-        reg_loss=Regularization(net, args.weight_d, p=2)
+        reg_loss=Regularization(net, args.weight_d, p=2) # 正则化损失函数
     else:
         print("no regularization")
     
@@ -187,16 +212,16 @@ if __name__ == '__main__':
     optimizer = optim.Adam(net.parameters(), lr=args.lr) # 使用 Adam 优化器来训练模型，并指定学习率 args.lr
     train_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)    #  创建一个学习率调度器 StepLR，每 20 个 epoch 调整学习率，缩小比例 gamma=0.1
 
-    checkpoint_path = os.path.join(settings.CHECKPOINT_PATH, args.net, args.save_path, settings.TIME_NOW)
 
+    checkpoint_path = os.path.join(settings.CHECKPOINT_PATH, args.net, args.save_path, settings.TIME_NOW) #它会根据操作系统的路径分隔符（例如，Windows 上是反斜杠 \，而在 Unix/Linux 上是正斜杠 /）来正确地构建路径。
     #use tensorboard
-    if not os.path.exists(settings.LOG_DIR):               # 如果没 log 路径 创建log路径
-        os.mkdir(settings.LOG_DIR)
-
+    if not os.path.exists(settings.LOG_DIR):               # 如果没 log 路径 创建log路径 runs 路径
+        os.mkdir(settings.LOG_DIR)                       
     #create checkpoint folder to save model
     if not os.path.exists(checkpoint_path):                  # 参数路径
         os.makedirs(checkpoint_path)
     checkpoint_path_pth = os.path.join(checkpoint_path, '{net}-{type}.pth')
+
 
     best_acc = 0.0
     Train_Loss = []
