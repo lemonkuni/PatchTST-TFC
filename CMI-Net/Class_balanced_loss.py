@@ -102,7 +102,8 @@ def CB_loss(labels, logits, samples_per_cls, no_of_classes, loss_type, beta, gam
             f"Labels contain invalid class index. Max label: {labels.max()}, "
             f"num_classes: {no_of_classes}, unique labels: {torch.unique(labels)}"
         )
-
+    
+    # 计算权重############################################################################
     effective_num = 1.0 - torch.pow(beta, samples_per_cls)
     weights = (1.0 - beta) / effective_num
     weights = weights / torch.sum(weights) * no_of_classes
@@ -115,7 +116,8 @@ def CB_loss(labels, logits, samples_per_cls, no_of_classes, loss_type, beta, gam
     weights = weights.sum(1)
     weights = weights.unsqueeze(1)
     weights = weights.repeat(1, no_of_classes)
-
+    ########################################################################################
+    
     if loss_type == "focal":
         cb_loss = focal_loss(labels_one_hot, logits, weights, gamma)
     elif loss_type == "sigmoid":
