@@ -151,8 +151,7 @@ def eval_training(valid_loader, network, loss_function, epoch=0):
     class_target = torch.cat(class_target).cpu().numpy().tolist()  # 将所有真实标签合并并转换为列表
     class_predict = torch.cat(class_predict).cpu().numpy().tolist()  # 将所有预测标签合并并转换为列表
 
-    # 打印分类报告
-    report = classification_report(class_target, class_predict, zero_division='warn')  # 生成分类报告
+
     print('Evaluating Network.....')
     print('Valid set: Epoch: {}, Average loss: {:.4f}, Accuracy: {:.4f}, Time consumed: {:.2f}s'.format(
         epoch,
@@ -161,11 +160,17 @@ def eval_training(valid_loader, network, loss_function, epoch=0):
         time.time() - start  # 计算耗时
     ))
 
-    
+    # 生成混淆矩阵
+    matrix = confusion_matrix(class_target, class_predict)
+    print('Confusion Matrix:')
+    print(matrix)
 
-    print('------------')
-    print('Classification Report:')
-    print(report)
+    
+    # # 打印分类报告
+    # report = classification_report(class_target, class_predict, zero_division='warn')  # 生成分类报告
+    # print('------------')
+    # print('Classification Report:')
+    # print(report)
 
     #Obtain f1_score of the prediction
     fs = f1_score(class_target, class_predict, average='macro')
